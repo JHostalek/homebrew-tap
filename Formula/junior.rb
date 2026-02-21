@@ -3,7 +3,7 @@ class Junior < Formula
   homepage "https://github.com/JHostalek/junior"
   version "1.0.0"
   url "https://github.com/JHostalek/junior/releases/download/v#{version}/junior-macos-arm64-v#{version}.tar.gz"
-  sha256 "PLACEHOLDER"
+  sha256 "83a39ae629fd7eac88367df7a0d18037faf38f9ec9d33cecc94f1bb10ee3d1f1"
   license "MIT"
 
   depends_on :macos

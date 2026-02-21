@@ -1,9 +1,9 @@
 class Junior < Formula
   desc "Autonomous software development CLI - queue tasks and execute via headless Claude Code"
   homepage "https://github.com/JHostalek/junior"
-  version "1.0.0"
+  version "1.0.1"
   url "https://github.com/JHostalek/junior/releases/download/v#{version}/junior-macos-arm64-v#{version}.tar.gz"
-  sha256 "83a39ae629fd7eac88367df7a0d18037faf38f9ec9d33cecc94f1bb10ee3d1f1"
+  sha256 "9db2ca66097c384dd8b079437c8d8e5ba9c37d98f555db0c7ccce508844504a0"
   license "MIT"
 
   depends_on :macos

@@ -1,9 +1,9 @@
 class Terna < Formula
   desc "CLI wrapper for the Terna Transparency API - Italian electricity grid data"
   homepage "https://github.com/JHostalek/terna-cli"
-  version "0.0.0"
+  version "0.2.0"
   url "https://github.com/JHostalek/terna-cli/releases/download/v#{version}/terna-macos-arm64-v#{version}.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "1d126bed311a1c29afba0fde635d73da41f80a7f3348b0217958e3745f7052d6"
   license "MIT"
 
   depends_on :macos

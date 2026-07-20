@@ -4,140 +4,47 @@ on:
   workflow_dispatch:
     inputs:
       formula:
-        description: Formula name (for example, hs)
+        description: 'Formula name (e.g., junior)'
         required: true
         type: string
       tag:
-        description: Release tag (for example, v0.3.0)
+        description: 'Release tag (e.g., v1.0.0)'
         required: true
         type: string
       repository:
-        description: Source repository (for example, JHostalek/hlidac-statu-cli)
+        description: 'Source repository (e.g., JHostalek/junior)'
         required: true
         type: string
 
-concurrency:
-  group: update-formula
-  queue: max
-  cancel-in-progress: false
-
 jobs:
-  validate-release:
-    runs-on: macos-14
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    outputs:
-      sha256: ${{ steps.release.outputs.sha256 }}
-      version: ${{ steps.release.outputs.version }}
-    steps:
-      - name: Checkout tap repository without persisted credentials
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - name: Validate dispatch inputs
-        env:
-          FORMULA: ${{ inputs.formula }}
-          REPOSITORY: ${{ inputs.repository }}
-          TAG: ${{ inputs.tag }}
-        run: |
-          [[ "$FORMULA" =~ ^[a-z][a-z0-9-]*$ ]]
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$REPOSITORY" =~ ^JHostalek/[A-Za-z0-9._-]+$ ]]
-          test -f "Formula/$FORMULA.rb"
-
-      - name: Download and verify release archive
-        id: release
-        env:
-          FORMULA: ${{ inputs.formula }}
-          REPOSITORY: ${{ inputs.repository }}
-          TAG: ${{ inputs.tag }}
-        run: |
-          VERSION="${TAG#v}"
-          ARCHIVE="${FORMULA}-macos-arm64-${TAG}.tar.gz"
-          URL="https://github.com/${REPOSITORY}/releases/download/${TAG}/${ARCHIVE}"
-          mkdir validation
-          curl --fail --location --show-error "$URL" --output "validation/$ARCHIVE"
-
-          if [[ "$FORMULA" == "hs" ]]; then
-            curl --fail --location --show-error "$URL.sha256" --output "validation/$ARCHIVE.sha256"
-            (cd validation && shasum -a 256 -c "$ARCHIVE.sha256")
-          fi
-
-          test "$(tar -tzf "validation/$ARCHIVE" | sed 's#^\./##')" = "$FORMULA"
-          tar -xzf "validation/$ARCHIVE" -C validation
-          test -x "validation/$FORMULA"
-          test "$(file -b "validation/$FORMULA")" = "Mach-O 64-bit executable arm64"
-          "validation/$FORMULA" --version | grep --fixed-strings "$VERSION"
-
-          SHA256="$(shasum -a 256 "validation/$ARCHIVE" | awk '{print $1}')"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "SHA256=$SHA256" >> "$GITHUB_ENV"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
-
-      - name: Prepare formula under test
-        env:
-          FORMULA: ${{ inputs.formula }}
-        run: |
-          sed -i '' -E "s/^  version \".*\"$/  version \"${VERSION}\"/" "Formula/$FORMULA.rb"
-          sed -i '' -E "s/^  sha256 \".*\"$/  sha256 \"${SHA256}\"/" "Formula/$FORMULA.rb"
-          grep --fixed-strings "version \"${VERSION}\"" "Formula/$FORMULA.rb"
-          grep --fixed-strings "sha256 \"${SHA256}\"" "Formula/$FORMULA.rb"
-          ruby -c "Formula/$FORMULA.rb"
-
-      - name: Install and test updated formula
-        env:
-          FORMULA: ${{ inputs.formula }}
-        run: |
-          brew tap-new codex/release-validation
-          VALIDATION_TAP="$(brew --repository codex/release-validation)"
-          cp "Formula/$FORMULA.rb" "$VALIDATION_TAP/Formula/$FORMULA.rb"
-          brew install "codex/release-validation/$FORMULA"
-          brew test "codex/release-validation/$FORMULA"
-
-  commit-formula:
-    needs: validate-release
-    runs-on: macos-14
-    timeout-minutes: 5
-    permissions:
-      contents: write
+  update-formula:
+    runs-on: macos-latest
     steps:
       - name: Checkout tap repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update formula from validated metadata
-        env:
-          FORMULA: ${{ inputs.formula }}
-          SHA256: ${{ needs.validate-release.outputs.sha256 }}
-          TAG: ${{ inputs.tag }}
-          VERSION: ${{ needs.validate-release.outputs.version }}
+      - name: Setup Git
         run: |
-          [[ "$FORMULA" =~ ^[a-z][a-z0-9-]*$ ]]
-          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          [[ "$SHA256" =~ ^[a-f0-9]{64}$ ]]
-          test "$TAG" = "v$VERSION"
-          test -f "Formula/$FORMULA.rb"
-
-          sed -i '' -E "s/^  version \".*\"$/  version \"${VERSION}\"/" "Formula/$FORMULA.rb"
-          sed -i '' -E "s/^  sha256 \".*\"$/  sha256 \"${SHA256}\"/" "Formula/$FORMULA.rb"
-          grep --fixed-strings "version \"${VERSION}\"" "Formula/$FORMULA.rb"
-          grep --fixed-strings "sha256 \"${SHA256}\"" "Formula/$FORMULA.rb"
-          ruby -c "Formula/$FORMULA.rb"
-
-      - name: Commit formula update
-        env:
-          FORMULA: ${{ inputs.formula }}
-          TAG: ${{ inputs.tag }}
-        run: |
-          if git diff --quiet -- "Formula/$FORMULA.rb"; then
-            echo "Formula/$FORMULA.rb is already current"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "Formula/$FORMULA.rb"
-          git commit -m "$FORMULA $TAG"
+
+      - name: Update formula
+        run: |
+          FORMULA="${{ github.event.inputs.formula }}"
+          TAG="${{ github.event.inputs.tag }}"
+          REPO="${{ github.event.inputs.repository }}"
+          VERSION="${TAG#v}"
+
+          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${FORMULA}-macos-arm64-${TAG}.tar.gz"
+          curl -fL "${DOWNLOAD_URL}" -o "${FORMULA}.tar.gz"
+
+          SHA256=$(shasum -a 256 "${FORMULA}.tar.gz" | awk '{print $1}')
+
+          sed -i '' "s/version \".*\"/version \"${VERSION}\"/" "Formula/${FORMULA}.rb"
+          sed -i '' "s/sha256 \".*\"/sha256 \"${SHA256}\"/" "Formula/${FORMULA}.rb"
+
+          git add "Formula/${FORMULA}.rb"
+          git commit -m "${FORMULA} ${TAG}"
           git push

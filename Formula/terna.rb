@@ -5,8 +5,8 @@ class Terna < Formula
   sha256 "f097128f8e1e75a6da5224683342b9cea6eaa4861b78fc2ee9472970de9e39f3"
   license "MIT"
 
-  depends_on :macos
   depends_on arch: :arm64
+  depends_on :macos
 
   def install
     bin.install "terna"

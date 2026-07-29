@@ -5,8 +5,8 @@ class Junior < Formula
   sha256 "7e9010df263d7577bfba22290865309916ec316efaf882a7146a028567a9dd75"
   license "MIT"
 
-  depends_on :macos
   depends_on arch: :arm64
+  depends_on :macos
 
   def install
     bin.install "junior"

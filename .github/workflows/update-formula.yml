@@ -118,7 +118,8 @@ jobs:
           git switch -c "$BRANCH"
           git add "Formula/$FORMULA.rb"
           git commit -m "$FORMULA v$VERSION"
-          git push --force origin "HEAD:refs/heads/$BRANCH"
+          git fetch origin "$BRANCH" || true
+          git push --force-with-lease origin "HEAD:refs/heads/$BRANCH"
 
           PR_URL="$(gh pr list --head "$BRANCH" --state open --json url --jq '.[0].url')"
           if [[ -z "$PR_URL" ]]; then

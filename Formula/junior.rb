@@ -1,13 +1,12 @@
 class Junior < Formula
   desc "Autonomous software development CLI - queue tasks and execute via headless Claude Code"
   homepage "https://github.com/JHostalek/junior"
-  version "1.0.2"
-  url "https://github.com/JHostalek/junior/releases/download/v#{version}/junior-macos-arm64-v#{version}.tar.gz"
+  url "https://github.com/JHostalek/junior/releases/download/v1.0.2/junior-macos-arm64-v1.0.2.tar.gz"
   sha256 "7e9010df263d7577bfba22290865309916ec316efaf882a7146a028567a9dd75"
   license "MIT"
 
-  depends_on :macos
   depends_on arch: :arm64
+  depends_on :macos
 
   def install
     bin.install "junior"

@@ -92,7 +92,7 @@ jobs:
             exit 0
           fi
 
-          ASSET_URL="$RELEASE_URL/$ASSET" VERSION="$VERSION" SHA256="$ACTUAL" ruby - "Formula/$FORMULA.rb" <<'RUBY'
+          ASSET_URL="$RELEASE_URL/$ASSET" SHA256="$ACTUAL" ruby - "Formula/$FORMULA.rb" <<'RUBY'
           path = ARGV.fetch(0)
           text = File.read(path)
           raise "formula has no unique url" unless text.scan(/^  url ".+"$/).length == 1

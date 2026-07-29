@@ -4,47 +4,126 @@ on:
   workflow_dispatch:
     inputs:
       formula:
-        description: 'Formula name (e.g., junior)'
+        description: Formula name
         required: true
-        type: string
+        type: choice
+        options: [ares, hs, junior, terna]
       tag:
-        description: 'Release tag (e.g., v1.0.0)'
+        description: Release tag (vMAJOR.MINOR.PATCH)
         required: true
         type: string
       repository:
-        description: 'Source repository (e.g., JHostalek/junior)'
+        description: Source repository
         required: true
-        type: string
+        type: choice
+        options:
+          - JHostalek/ares-cli
+          - JHostalek/hlidac-statu-cli
+          - JHostalek/junior
+          - JHostalek/terna-cli
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: formula-${{ inputs.formula }}
+  cancel-in-progress: false
 
 jobs:
   update-formula:
-    runs-on: macos-latest
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      FORMULA: ${{ inputs.formula }}
+      TAG: ${{ inputs.tag }}
+      REPOSITORY: ${{ inputs.repository }}
     steps:
       - name: Checkout tap repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup Git
+      - name: Validate release identity
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          case "$FORMULA:$REPOSITORY" in
+            ares:JHostalek/ares-cli | hs:JHostalek/hlidac-statu-cli | junior:JHostalek/junior | terna:JHostalek/terna-cli) ;;
+            *)
+              echo "Formula and repository do not match" >&2
+              exit 2
+              ;;
+          esac
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag must match vMAJOR.MINOR.PATCH" >&2
+            exit 2
+          fi
+          test -f "Formula/$FORMULA.rb"
 
-      - name: Update formula
+      - name: Download and verify release
+        id: release
         run: |
-          FORMULA="${{ github.event.inputs.formula }}"
-          TAG="${{ github.event.inputs.tag }}"
-          REPO="${{ github.event.inputs.repository }}"
           VERSION="${TAG#v}"
+          ASSET="${FORMULA}-macos-arm64-${TAG}.tar.gz"
+          RELEASE_URL="https://github.com/${REPOSITORY}/releases/download/${TAG}"
 
-          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${FORMULA}-macos-arm64-${TAG}.tar.gz"
-          curl -fL "${DOWNLOAD_URL}" -o "${FORMULA}.tar.gz"
+          curl --fail --location --retry 3 --output "$ASSET" "$RELEASE_URL/$ASSET"
+          curl --fail --location --retry 3 --output "$ASSET.sha256" "$RELEASE_URL/$ASSET.sha256"
 
-          SHA256=$(shasum -a 256 "${FORMULA}.tar.gz" | awk '{print $1}')
+          EXPECTED="$(awk -v asset="$ASSET" '$2 == asset { print $1 }' "$ASSET.sha256")"
+          ACTUAL="$(shasum -a 256 "$ASSET" | awk '{ print $1 }')"
+          if [[ ! "$EXPECTED" =~ ^[0-9a-f]{64}$ ]] || [[ "$ACTUAL" != "$EXPECTED" ]]; then
+            echo "Release checksum verification failed" >&2
+            exit 1
+          fi
+          gh attestation verify "$ASSET" --repo "$REPOSITORY"
 
-          sed -i '' "s/version \".*\"/version \"${VERSION}\"/" "Formula/${FORMULA}.rb"
-          sed -i '' "s/sha256 \".*\"/sha256 \"${SHA256}\"/" "Formula/${FORMULA}.rb"
+          CURRENT_VERSION="$(ruby -e 'puts File.read(ARGV.fetch(0))[%r{/download/v([^/]+)/}, 1]' "Formula/$FORMULA.rb")"
+          CURRENT_SHA="$(ruby -e 'puts File.read(ARGV.fetch(0))[/^  sha256 \"([0-9a-f]+)\"$/, 1]' "Formula/$FORMULA.rb")"
+          if [[ "$CURRENT_VERSION" == "$VERSION" && "$CURRENT_SHA" == "$ACTUAL" ]]; then
+            echo "Formula $FORMULA is already at $TAG"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-          git add "Formula/${FORMULA}.rb"
-          git commit -m "${FORMULA} ${TAG}"
-          git push
+          ASSET_URL="$RELEASE_URL/$ASSET" VERSION="$VERSION" SHA256="$ACTUAL" ruby - "Formula/$FORMULA.rb" <<'RUBY'
+          path = ARGV.fetch(0)
+          text = File.read(path)
+          raise "formula has no unique url" unless text.scan(/^  url ".+"$/).length == 1
+          raise "formula has no unique sha256" unless text.scan(/^  sha256 "[0-9a-f]+"$/).length == 1
+          text.sub!(/^  url ".+"$/, %(  url "#{ENV.fetch("ASSET_URL")}"))
+          text.sub!(/^  sha256 "[0-9a-f]+"$/, %(  sha256 "#{ENV.fetch("SHA256")}"))
+          File.write(path, text)
+          RUBY
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Validate candidate formula
+        if: steps.release.outputs.changed == 'true'
+        run: |
+          brew tap --custom-remote JHostalek/tap "$GITHUB_WORKSPACE"
+          brew audit --strict --online "JHostalek/tap/$FORMULA"
+          brew install "JHostalek/tap/$FORMULA"
+          brew test "JHostalek/tap/$FORMULA"
+
+      - name: Publish tested formula update
+        if: steps.release.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          BRANCH="formula/${FORMULA}-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add "Formula/$FORMULA.rb"
+          git commit -m "$FORMULA v$VERSION"
+          git push --force origin "HEAD:refs/heads/$BRANCH"
+
+          PR_URL="$(gh pr list --head "$BRANCH" --state open --json url --jq '.[0].url')"
+          if [[ -z "$PR_URL" ]]; then
+            PR_URL="$(gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "$FORMULA v$VERSION" \
+              --body "Automated, verified formula update for $FORMULA v$VERSION.")"
+          fi
+          gh pr merge "$PR_URL" --squash --delete-branch

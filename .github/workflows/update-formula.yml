@@ -7,7 +7,7 @@ on:
         description: Formula name
         required: true
         type: choice
-        options: [ares, hs, junior, terna]
+        options: [ares, hs, junior, nen, terna]
       tag:
         description: Release tag (vMAJOR.MINOR.PATCH)
         required: true
@@ -20,6 +20,7 @@ on:
           - JHostalek/ares-cli
           - JHostalek/hlidac-statu-cli
           - JHostalek/junior
+          - JHostalek/nen-cli
           - JHostalek/terna-cli
 
 concurrency:
@@ -50,7 +51,7 @@ jobs:
       - name: Validate release identity
         run: |
           case "$FORMULA:$REPOSITORY" in
-            ares:JHostalek/ares-cli | hs:JHostalek/hlidac-statu-cli | junior:JHostalek/junior | terna:JHostalek/terna-cli) ;;
+            ares:JHostalek/ares-cli | hs:JHostalek/hlidac-statu-cli | junior:JHostalek/junior | nen:JHostalek/nen-cli | terna:JHostalek/terna-cli) ;;
             *)
               echo "Formula and repository do not match" >&2
               exit 2

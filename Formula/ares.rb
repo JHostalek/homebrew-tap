@@ -1,8 +1,8 @@
 class Ares < Formula
   desc "CLI wrapper for the Czech ARES REST API - economic-subject registries"
   homepage "https://github.com/JHostalek/ares-cli"
-  url "https://github.com/JHostalek/ares-cli/releases/download/v0.4.0/ares-macos-arm64-v0.4.0.tar.gz"
-  sha256 "938a810066cc756ca8523b1126dba0e6c738d80e80baf88cd50abcb3bfd0c43d"
+  url "https://github.com/JHostalek/ares-cli/releases/download/v0.4.1/ares-macos-arm64-v0.4.1.tar.gz"
+  sha256 "b53a8d238186baf9481050d921a47c5f902d7d81d78bb0b6ef4d8dcfea79214a"
   license "MIT"
 
   depends_on arch: :arm64

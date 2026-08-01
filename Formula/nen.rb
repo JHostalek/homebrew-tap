@@ -1,8 +1,8 @@
 class Nen < Formula
   desc "CLI wrapper for NEN, the Czech national e-procurement tool - public tenders"
   homepage "https://github.com/JHostalek/nen-cli"
-  url "https://github.com/JHostalek/nen-cli/releases/download/v1.0.0/nen-macos-arm64-v1.0.0.tar.gz"
-  sha256 "ec9db477ac99b492e4f5530d409f2e90959a2791860bf4d25096dbc71c313e58"
+  url "https://github.com/JHostalek/nen-cli/releases/download/v1.0.1/nen-macos-arm64-v1.0.1.tar.gz"
+  sha256 "238b02debfeac9c05342e3a0d542e3e4f0d8e0dce5e96ad2e69da92880f6162e"
   license "MIT"
 
   depends_on arch: :arm64

@@ -1,8 +1,8 @@
 class Vvz < Formula
   desc "CLI client for the Czech public procurement journal Věstník veřejných zakázek"
   homepage "https://github.com/JHostalek/vvz-cli"
-  url "https://github.com/JHostalek/vvz-cli/releases/download/v0.1.0/vvz-macos-arm64-v0.1.0.tar.gz"
-  sha256 "b3663d3c001a7b9f4524ac5b425216cb4c460bfa502159bce03519375bf43f70"
+  url "https://github.com/JHostalek/vvz-cli/releases/download/v0.1.1/vvz-macos-arm64-v0.1.1.tar.gz"
+  sha256 "c6a7b253991fbb35359d9bc546979172aaa4bce934fd36f36abe1fe92715f213"
   license "MIT"
 
   depends_on arch: :arm64

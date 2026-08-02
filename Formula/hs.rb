@@ -1,8 +1,8 @@
 class Hs < Formula
   desc "CLI wrapper for the Hlídač státu REST API v2"
   homepage "https://github.com/JHostalek/hlidac-statu-cli"
-  url "https://github.com/JHostalek/hlidac-statu-cli/releases/download/v0.6.0/hs-macos-arm64-v0.6.0.tar.gz"
-  sha256 "a06a180d6c0b73e01e9c7fbc39dba330a71dbaa0062844bdc3ff0473a5f048cf"
+  url "https://github.com/JHostalek/hlidac-statu-cli/releases/download/v0.7.0/hs-macos-arm64-v0.7.0.tar.gz"
+  sha256 "17e8f77134e95a63b33e7e373aa92977cdd8228c2addb37e2872ad47443bfb02"
   license "MIT"
 
   depends_on arch: :arm64
